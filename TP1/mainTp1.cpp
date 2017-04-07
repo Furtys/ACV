@@ -9,14 +9,10 @@ using namespace std;
 //=======================================================================================
 // to YCrCb
 //=======================================================================================
-void toYCrCb(const Mat & imgSrc, Mat & imgDestY, Mat & imgDestCr, Mat & imgDestCb){
+void toYCrCb(const Mat & imgSrc, vector<Mat> &vecImgSrc){
 	Mat imgYCrCb;
-	vector<Mat> img3cans;
 	cvtColor(imgSrc, imgYCrCb, CV_BGR2YCrCb);
-	split(imgYCrCb, img3cans);
-	imgDestY = img3cans[0];
-	imgDestCr = img3cans[1];
-	imgDestCb = img3cans[2];
+	split(imgYCrCb, vecImgSrc);
 
 	// imshow("InputImageSrcY", imgDestY);
 	// cvWaitKey();
@@ -140,16 +136,14 @@ void distortionMap(const vector<Mat> & imgSrc, const vector<Mat> & imgDeg, Mat &
 {
 	vector<Mat> tmp;
 	int alpha = 1;
+	Mat result;
 
-	tmp[0] = imgSrc[0] - imgDeg[0];
-	tmp[1] = imgSrc[1] - imgDeg[1];
-	tmp[2] = imgSrc[2] - imgDeg[2];
+	for(int i = 0; i < 3; i++){
+		result = ((imgSrc[0] - imgDeg[0]) + 255) / 2;
+		tmp.push_back(result);
+	}
 
-	tmp[0] = 128 * (alpha * tmp[0]);
-	tmp[1] = 128 * (alpha * tmp[1]);
-	tmp[2] = 128 * (alpha * tmp[2]);
-
-	cvMerge(tmp, distoMap);
+	merge(tmp, distoMap);
 
 }
 
@@ -166,6 +160,8 @@ int main(int argc, char** argv){
 
   Mat inputImageSrc;
 	Mat inputImageSrc2;
+	vector<Mat> imgSrc;
+	vector<Mat> imgDeg;
 	Mat imgSrcY, imgSrcCr, imgSrcCb;
 	Mat imgDegY, imgDegCr, imgDegCb;
 
@@ -184,40 +180,39 @@ int main(int argc, char** argv){
   }
 
 	//Conversion en YCrCb
-	toYCrCb(inputImageSrc, imgSrcY, imgSrcCr, imgSrcCb);
-	toYCrCb(inputImageSrc2, imgDegY, imgDegCr, imgDegCb);
+	toYCrCb(inputImageSrc, imgSrc);
+	toYCrCb(inputImageSrc2, imgDeg);
 
   // Visualiser l'image
 	imshow("InputImageSrcBGR", inputImageSrc);
 	cvWaitKey();
 	//Enregistrement des inputImageSrc
-	imwrite((string)argv[1] + "_Y", imgSrcY);
-	imwrite((string)argv[1] + "_Cb", imgSrcCb);
-	imwrite((string)argv[1] + "_Cr", imgSrcCr);
+	imwrite((string)argv[1] + "_Y", imgSrc[0]);
+	imwrite((string)argv[1] + "_Cr", imgSrc[1]);
+	imwrite((string)argv[1] + "_Cb", imgSrc[2]);
 	// Visualiser l'image
 	imshow("InputImageSrc2BGR", inputImageSrc2);
 	cvWaitKey();
 	//Enregistrement des inputImageSrc
-	imwrite((string)argv[2] + "_Y", imgDegY);
-	imwrite((string)argv[2] + "_Cb", imgDegCb);
-	imwrite((string)argv[2] + "_Cr", imgDegCr);
+	imwrite((string)argv[2] + "_Y", imgDeg[0]);
+	imwrite((string)argv[2] + "_Cr", imgDeg[1]);
+	imwrite((string)argv[2] + "_Cb", imgDeg[2]);
 
 	cout << "Calculs between " << argv[1] << "_Y and " << argv[2] << "_Y : "<< "\n";
-	psnr(imgSrcY, imgDegY);
+	psnr(imgSrc[0], imgDeg[0]);
 	cout << "Calculs between " << argv[1] << "_Cr and " << argv[2] << "_Cr : "<< "\n";
-	psnr(imgSrcCr, imgDegCr);
+	psnr(imgSrc[1], imgDeg[1]);
 	cout << "Calculs between " << argv[1] << "_Cb and " << argv[2] << "_Cb : "<< "\n";
-	psnr(imgSrcCb, imgDegCb);
+	psnr(imgSrc[2], imgDeg[2]);
 
-	vector<Mat> imgSrc;
-	cvMerge(imgSrcY, imgSrcCr, imgSrcCb, imgSrc);
-	vector<Mat> imgDeg;
-	cvMerge(imgDegY, imgDegCr, imgDegCb, imgDeg);
+	cout << "distortionMap" << endl;
 
 	Mat errorMap;
-	distortionMap(imgSrc, imgDeb, errorMap);
+	distortionMap(imgSrc, imgDeg, errorMap);
 
-	imshow(errorMap);
+	imshow("Carte d'erreur", errorMap);
+	imwrite((string)argv[2] + "_errorMap", errorMap);
+	cvWaitKey();
 
   return 0;
 }
