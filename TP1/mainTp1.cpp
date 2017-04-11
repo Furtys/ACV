@@ -92,6 +92,7 @@ Mat norm_0_255(InputArray _src) {
 //=======================================================================================
 double eqm(const Mat & img1, const Mat & img2)
 {
+
 	int rows = img1.rows;
 	int cols = img1.cols;
 
@@ -145,7 +146,8 @@ void distortionMap(const vector<Mat> & imgSrc, const vector<Mat> & imgDeg, Mat &
 
 	// merge(tmp, distoMap);
 
-	distoMap = ((imgSrc[0] - imgDeg[0]) + 255) / 2;
+	//distoMap =(((imgSrc[0] - imgDeg[0]) + 255) / 2);
+	distoMap = imgSrc[0] - imgDeg[0] + 128;
 
 }
 
