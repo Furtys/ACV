@@ -145,7 +145,7 @@ void distortionMap(const vector<Mat> & imgSrc, const vector<Mat> & imgDeg, Mat &
 
 	// merge(tmp, distoMap);
 
-	distoMap = ((imgSrc[0] - imgDeg[0]) + 255) / 2;
+	distoMap = imgSrc[0] - imgDeg[0] +128;
 
 }
 
@@ -167,7 +167,7 @@ void entropyCalculus(const Mat& errorMap, Mat& histo)
 			proba = histo.at<float>(i)/n;
 			entropy += - proba * log2(proba);
 		}
-		
+
 	}
 	std::cout << "ENTROPY : " << entropy << std::endl;
 }
@@ -265,7 +265,7 @@ int main(int argc, char** argv){
 	imwrite((string)argv[1] + "_Cr", imgSrc[1]);
 	imwrite((string)argv[1] + "_Cb", imgSrc[2]);
 	imwrite((string)argv[1] + "_Histo", histoSrc);
-	
+
 
 	// Visualiser l'image
 	imshow("InputImageSrc2BGR", inputImageSrc2);
@@ -299,7 +299,7 @@ int main(int argc, char** argv){
 	entropyCalculus(errorMap, errorHisto);
 	kurtosis(errorHisto);
 	displayHistogram(errorHisto);
-	
+
 
 
 
