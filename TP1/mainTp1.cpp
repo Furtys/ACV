@@ -134,17 +134,88 @@ double psnr(const Mat & imgSrc, const Mat & imgDeg)
 //=======================================================================================
 void distortionMap(const vector<Mat> & imgSrc, const vector<Mat> & imgDeg, Mat &distoMap)
 {
-	vector<Mat> tmp;
-	int alpha = 1;
-	Mat result;
+	// vector<Mat> tmp;
+	// int alpha = 1;
+	// Mat result;
 
-	for(int i = 0; i < 3; i++){
-		result = ((imgSrc[0] - imgDeg[0]) + 255) / 2;
-		tmp.push_back(result);
+	// for(int i = 0; i < 3; i++){
+	// 	result = ((imgSrc[0] - imgDeg[0]) + 255) / 2;
+	// 	tmp.push_back(result);
+	// }
+
+	// merge(tmp, distoMap);
+
+	distoMap = ((imgSrc[0] - imgDeg[0]) + 255) / 2;
+
+}
+
+//=======================================================================================
+// Entropy
+//=======================================================================================
+
+void entropyCalculus(const Mat& errorMap, Mat& histo)
+{
+	computeHistogram(errorMap, histo);
+
+	float entropy = 0;
+	int n = errorMap.rows * errorMap.cols;
+	float proba = 0;
+	for (int i = 0; i < histo.rows; ++i)
+	{
+		if (histo.at<float>(i) != 0)
+		{
+			proba = histo.at<float>(i)/n;
+			entropy += - proba * log2(proba);
+		}
+		
+	}
+	std::cout << "ENTROPY : " << entropy << std::endl;
+}
+
+//=======================================================================================
+// Kurtosis
+//=======================================================================================
+
+void kurtosis(const Mat& histo)
+{
+	int n = 0 ;
+	for (int i = 0; i < histo.rows; ++i)
+	{
+		n += histo.at<float>(i);
 	}
 
-	merge(tmp, distoMap);
+	//--------------- MOYENNE ---------------//
 
+	float mean = 0;
+	for (int i = 0; i < histo.rows; ++i)
+	{
+		mean += histo.at<float>(i) * i;
+	}
+	mean = mean / n;
+	std::cout << "MEAN : " << mean << std::endl;
+
+	//--------------- ECART TYPE ---------------//
+
+	float e = 0;
+	for (int i = 0; i < histo.rows; ++i)
+	{
+		e += histo.at<float>(i) * (i-mean) * (i-mean);
+	}
+	e = sqrt(e/n);
+	std::cout << "ECART TYPE : " << e << std::endl;
+
+	//--------------- KURTOSIS ---------------//
+
+	float kurtosis = 0;
+	float temp = 0;
+	for (int i = 0; i < histo.rows; ++i)
+	{
+		temp = (i - mean)/e ;
+		kurtosis += histo.at<float>(i) * pow(temp,4) ;
+	}
+	kurtosis = kurtosis/n;
+
+	std::cout << "KURTOSIS : " << kurtosis << std::endl;
 }
 
 //=======================================================================================
@@ -162,8 +233,8 @@ int main(int argc, char** argv){
 	Mat inputImageSrc2;
 	vector<Mat> imgSrc;
 	vector<Mat> imgDeg;
-	Mat imgSrcY, imgSrcCr, imgSrcCb;
-	Mat imgDegY, imgDegCr, imgDegCb;
+	Mat imgSrcY, imgSrcCr, imgSrcCb, histoSrc;
+	Mat imgDegY, imgDegCr, imgDegCb, histoDeg;
 
   // Ouvrir l'image d'entr�e et v�rifier que l'ouverture du fichier se d�roule normalement
   inputImageSrc = imread(argv[1], CV_LOAD_IMAGE_COLOR);
@@ -183,20 +254,30 @@ int main(int argc, char** argv){
 	toYCrCb(inputImageSrc, imgSrc);
 	toYCrCb(inputImageSrc2, imgDeg);
 
-  // Visualiser l'image
+    // Visualiser l'image
 	imshow("InputImageSrcBGR", inputImageSrc);
+	entropyCalculus(imgSrc[1], histoSrc);
+	displayHistogram(histoSrc);
 	cvWaitKey();
+
 	//Enregistrement des inputImageSrc
 	imwrite((string)argv[1] + "_Y", imgSrc[0]);
 	imwrite((string)argv[1] + "_Cr", imgSrc[1]);
 	imwrite((string)argv[1] + "_Cb", imgSrc[2]);
+	imwrite((string)argv[1] + "_Histo", histoSrc);
+	
+
 	// Visualiser l'image
 	imshow("InputImageSrc2BGR", inputImageSrc2);
+	entropyCalculus(imgDeg[1], histoDeg);
+	displayHistogram(histoDeg);
 	cvWaitKey();
+
 	//Enregistrement des inputImageSrc
 	imwrite((string)argv[2] + "_Y", imgDeg[0]);
 	imwrite((string)argv[2] + "_Cr", imgDeg[1]);
 	imwrite((string)argv[2] + "_Cb", imgDeg[2]);
+	imwrite((string)argv[2] + "_Histo", histoDeg);
 
 	cout << "Calculs between " << argv[1] << "_Y and " << argv[2] << "_Y : "<< "\n";
 	psnr(imgSrc[0], imgDeg[0]);
@@ -208,11 +289,19 @@ int main(int argc, char** argv){
 	cout << "distortionMap" << endl;
 
 	Mat errorMap;
+	Mat errorHisto;
 	distortionMap(imgSrc, imgDeg, errorMap);
 
 	imshow("Carte d'erreur", errorMap);
 	imwrite((string)argv[2] + "_errorMap", errorMap);
 	cvWaitKey();
+
+	entropyCalculus(errorMap, errorHisto);
+	kurtosis(errorHisto);
+	displayHistogram(errorHisto);
+	
+
+
 
   return 0;
 }
