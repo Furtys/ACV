@@ -29,14 +29,6 @@ Mat norm_0_255(InputArray _src) {
  return dst;
 }
 
-Mat absolute(Mat& inputComponent){
-  for (int i = 0; i < inputComponent.rows; i ++){
-    for(int j = 0; j < inputComponent.cols; j++){
-
-    }
-  }
-}
-
 //=======================================================================================
 // to YCrCb
 //=======================================================================================
@@ -49,6 +41,7 @@ void toYCrCb(const Mat & imgSrc, Mat &ImgSrcYCrCb){
 //=======================================================================================
 void computeHistogram(const Mat& inputComponent, Mat& myHist)
 {
+  Mat absInputComponent = abs(inputComponent);
 	/// Establish the number of bins
 	int histSize = 256;
 	/// Set the ranges ( for B,G,R) )
@@ -58,7 +51,7 @@ void computeHistogram(const Mat& inputComponent, Mat& myHist)
 	bool accumulate = false;
 
 	/// Compute the histograms:
-	calcHist( &inputComponent, 1, 0, Mat(), myHist, 1, &histSize, &histRange, uniform, accumulate );
+	calcHist( &absInputComponent, 1, 0, Mat(), myHist, 1, &histSize, &histRange, uniform, accumulate );
 }
 
 //=======================================================================================
@@ -173,6 +166,7 @@ void DCT(const vector<Mat> &vecImgSrc, vector<Mat> &vecImgSrcDCT){
 // DCT Inverse
 //=======================================================================================
 void inverseDCT(const vector<Mat> &vecImgSrcDCT, vector<Mat> &vecImgSrcinvDCT){
+  vecImgSrcinvDCT.clear();
   for(int i = 0; i < 3; i++){
     Mat temp;
     dct(vecImgSrcDCT[i], temp, DCT_INVERSE);
@@ -201,9 +195,69 @@ void display_DCT(vector<Mat> &vecImgSrcDCT){
           vecImgSrcDCT[k].at<float>(i,j) = log(1+fabs(vecImgSrcDCT[k].at<float>(i,j)))/log(1+maxVal)*255;
       }
     }
+
+    // Mat in(vecImgSrcDCT[k].size(), CV_8UC1);
+    // vecImgSrcDCT[k].convertTo(in, CV_8UC1);
+    // Mat out(vecImgSrcDCT[k].size(), CV_8UC1);
+    // applyColorMap(in, out, COLORMAP_JET);
+    // imshow("Coefficient DCT", norm_0_255(out));
+    // waitKey();
   }
 }
 
+//=======================================================================================
+// Appliquer mask sur DCT
+//=======================================================================================
+void applyMask(vector<Mat> & imgSrcDCT, int mask = 0)
+{
+  int x, y, width, height;
+
+  int nbRows = imgSrcDCT[0].rows;
+  int nbCols = imgSrcDCT[0].cols;
+
+  Rect masque;
+
+  if(mask == 0){
+    x = (nbCols/2) + 10;
+    y = (nbRows/2) + 10;
+    width = nbCols - x;
+    height = nbRows - y;
+
+    std::cout << "X : " << x << " Y : " << y << " Width : " << width << " Height : " << height << std::endl;
+    masque = Rect(x, y, width, height);
+  }
+  else if(mask == 1){
+    x = (nbCols/2) + 10;
+    y = 0;
+    width = nbCols - x;
+    height = nbRows - y;
+
+    std::cout << "X : " << x << " Y : " << y << " Width : " << width << " Height : " << height << std::endl;
+    masque = Rect(x, y, width, height);
+  }
+  else if(mask == 2){
+    x = 0;
+    y = (nbRows/2) + 10;
+    width = nbCols - x;
+    height = nbRows - y;
+
+    std::cout << "X : " << x << " Y : " << y << " Width : " << width << " Height : " << height << std::endl;
+    masque = Rect(x, y, width, height);
+  }
+  else if(mask == 3){
+    x = 0;
+    y = 0;
+    width = nbCols - x;
+    height = nbRows - y;
+
+    std::cout << "X : " << x << " Y : " << y << " Width : " << width << " Height : " << height << std::endl;
+    masque = Rect(x, y, width, height);
+  }
+
+  for(int k = 0; k < 3; k ++){
+    //imgSrcDCT[k](masque).setTo(0);
+  }
+}
 
 //=======================================================================================
 //=======================================================================================
@@ -248,6 +302,8 @@ int main(int argc, char** argv){
   cout << "----------- COMPUTE inverseDCT --------------" << endl;
   inverseDCT(imgSrcDCT, imgSrcInverseDCT);
   imshow("Inverse DCT Y", norm_0_255(imgSrcInverseDCT[0]));
+  imshow("Inverse DCT Cr", norm_0_255(imgSrcInverseDCT[1]));
+  imshow("Inverse DCT Cb", norm_0_255(imgSrcInverseDCT[2]));
   waitKey();
 
 	cout << "Calculs between " << argv[1] << "_Y and inverseDCT_Y : "<< "\n";
@@ -262,7 +318,7 @@ int main(int argc, char** argv){
   vector<Mat> imgSrcDCTDisplayed = imgSrcDCT;
   display_DCT(imgSrcDCTDisplayed);
   vector<Mat> histosCoef;
-  std::cout << "Entropie des coefficients" << std::endl;
+  /*std::cout << "Entropie des coefficients" << std::endl;
   for(int i = 0; i < 3; i ++){
     imshow("Coefficient DCT", norm_0_255(imgSrcDCTDisplayed[i]));
     waitKey();
@@ -270,10 +326,10 @@ int main(int argc, char** argv){
     computeHistogram(imgSrcDCT[i], tempHist);
     histosCoef.push_back(displayHistogram(tempHist));
     entropyCalculus(imgSrcDCT[i], tempHist);
-  }
+  }*/
 
   //Calcul entropie image source
-  vector<Mat> histosSrc;
+/*  vector<Mat> histosSrc;
   std::cout << "Entropie de l'image source" << std::endl;
   for(int i = 0; i < 3; i ++){
     imshow("Image originale", norm_0_255(imgSrc[i]));
@@ -282,7 +338,33 @@ int main(int argc, char** argv){
     computeHistogram(imgSrc[i], tempHist);
     histosSrc.push_back(displayHistogram(tempHist));
     entropyCalculus(imgSrc[i], tempHist);
+  }*/
+
+  //2.3 - Annulation des coefficients DCT
+  std::cout << "Annulation des coefficients" << std::endl;
+  //applyMask(imgSrcDCT, 0);
+  imgSrcDCTDisplayed.clear();
+  imgSrcDCTDisplayed = imgSrcDCT;
+  display_DCT(imgSrcDCTDisplayed);
+  for(int i = 0; i < 3; i ++){
+    imshow("Coefficient DCT", norm_0_255(imgSrcDCTDisplayed[i]));
+    waitKey();
   }
+  inverseDCT(imgSrcDCT, imgSrcInverseDCT);
+  std::cout << "PSNR image source et DCT erased" << std::endl;
+  psnr(imgSrc[0], imgSrcInverseDCT[0]);
+  imshow("Inverse DCT Y_erased", norm_0_255(imgSrcInverseDCT[0]));
+  waitKey();
+  // int nbRows = inputImageSrc.rows;
+  // int nbCols = inputImageSrc.cols;
+  // int x = (nbRows/2) + 10;
+  // int y = (nbCols/2) + 10;
+  // int width = nbCols - y;
+  // int height = nbRows - x;
+  //
+  // std::cout << "X : " << x << " Y : " << y << " Width : " << width << " Height : " << height << std::endl;
+  // Rect mask(x, y, width, height);
+  // imgSrcDCT[0](mask) = Scalar(0);
 
   return 0;
 }
