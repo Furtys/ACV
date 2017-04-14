@@ -7,7 +7,7 @@ using namespace cv;
 using namespace std;
 
 
-//=======================================================================================
+//==================================================================================  a =====
 // Mat norm_0_255(InputArray _src)
 // Create and return normalized image
 //=======================================================================================
@@ -29,12 +29,85 @@ Mat norm_0_255(InputArray _src) {
  return dst;
 }
 
+Mat absolute(Mat& inputComponent){
+  for (int i = 0; i < inputComponent.rows; i ++){
+    for(int j = 0; j < inputComponent.cols; j++){
+
+    }
+  }
+}
 
 //=======================================================================================
 // to YCrCb
 //=======================================================================================
 void toYCrCb(const Mat & imgSrc, Mat &ImgSrcYCrCb){
 	cvtColor(imgSrc, ImgSrcYCrCb, CV_BGR2YCrCb);
+}
+
+//=======================================================================================
+// computeHistogram
+//=======================================================================================
+void computeHistogram(const Mat& inputComponent, Mat& myHist)
+{
+	/// Establish the number of bins
+	int histSize = 256;
+	/// Set the ranges ( for B,G,R) )
+	float range[] = { 0, 256 } ;
+	const float* histRange = { range };
+	bool uniform = true;
+	bool accumulate = false;
+
+	/// Compute the histograms:
+	calcHist( &inputComponent, 1, 0, Mat(), myHist, 1, &histSize, &histRange, uniform, accumulate );
+}
+
+//=======================================================================================
+// displayHistogram
+//=======================================================================================
+Mat displayHistogram(const Mat& myHist)
+{
+	// Establish the number of bins
+	int histSize = 256;
+	// Draw one histogram
+	int hist_w = 512; int hist_h = 400;
+	int bin_w = cvRound( (double) hist_w/histSize );
+	Mat histImage( hist_h, hist_w, CV_8UC3, Scalar( 0,0,0) );
+	/// Normalize the result to [ 0, histImage.rows ]
+	Mat myHistNorm;
+	normalize(myHist, myHistNorm, 0, histImage.rows, NORM_MINMAX, -1, Mat() );
+
+	/// Draw for each channel
+	for( int i = 1; i < histSize; i++ )
+	{
+		line( histImage, Point( bin_w*(i-1), hist_h - cvRound(myHistNorm.at<float>(i-1)) ) , Point( bin_w*(i), hist_h - cvRound(myHistNorm.at<float>(i)) ), Scalar( 255, 255, 255), 2, 8, 0 );
+	}
+	/// Display
+	namedWindow("Display Histo", CV_WINDOW_AUTOSIZE );
+	imshow("Display Histo", histImage );
+	cvWaitKey();
+
+  return histImage;
+}
+
+//=======================================================================================
+// Entropy
+//=======================================================================================
+
+void entropyCalculus(const Mat& errorMap, Mat& histo)
+{
+	float entropy = 0;
+	int n = errorMap.rows * errorMap.cols;
+	float proba = 0;
+	for (int i = 0; i < histo.rows; ++i)
+	{
+		if (histo.at<float>(i) != 0)
+		{
+			proba = histo.at<float>(i)/n;
+			entropy += - proba * log2(proba);
+		}
+
+	}
+	std::cout << "ENTROPY : " << entropy << std::endl;
 }
 
 //=======================================================================================
@@ -108,6 +181,31 @@ void inverseDCT(const vector<Mat> &vecImgSrcDCT, vector<Mat> &vecImgSrcinvDCT){
 }
 
 //=======================================================================================
+// Display coef DCT
+//=======================================================================================
+void display_DCT(vector<Mat> &vecImgSrcDCT){
+  int rows;
+  int cols;
+
+  vector<double*> maxValLoc;
+
+  for(int k = 0; k < 3; k++){
+    double maxVal;
+    minMaxLoc(vecImgSrcDCT[k], NULL, &maxVal, NULL, NULL);
+
+    rows = vecImgSrcDCT[k].rows;
+    cols = vecImgSrcDCT[k].cols;
+
+    for(int i = 0; i < rows; i++){
+      for(int j = 0; j < cols; j++){
+          vecImgSrcDCT[k].at<float>(i,j) = log(1+fabs(vecImgSrcDCT[k].at<float>(i,j)))/log(1+maxVal)*255;
+      }
+    }
+  }
+}
+
+
+//=======================================================================================
 //=======================================================================================
 // MAIN
 //=======================================================================================
@@ -158,6 +256,33 @@ int main(int argc, char** argv){
 	psnr(imgSrc[1], imgSrcInverseDCT[1]);
 	cout << "Calculs between " << argv[1] << "_Cb and inverseDCT_Cb : "<< "\n";
 	psnr(imgSrc[2], imgSrcInverseDCT[2]);
+
+
+  //Affichage des coefficients DCT et de l'entropie des coefficients
+  vector<Mat> imgSrcDCTDisplayed = imgSrcDCT;
+  display_DCT(imgSrcDCTDisplayed);
+  vector<Mat> histosCoef;
+  std::cout << "Entropie des coefficients" << std::endl;
+  for(int i = 0; i < 3; i ++){
+    imshow("Coefficient DCT", norm_0_255(imgSrcDCTDisplayed[i]));
+    waitKey();
+    Mat tempHist;
+    computeHistogram(imgSrcDCT[i], tempHist);
+    histosCoef.push_back(displayHistogram(tempHist));
+    entropyCalculus(imgSrcDCT[i], tempHist);
+  }
+
+  //Calcul entropie image source
+  vector<Mat> histosSrc;
+  std::cout << "Entropie de l'image source" << std::endl;
+  for(int i = 0; i < 3; i ++){
+    imshow("Image originale", norm_0_255(imgSrc[i]));
+    waitKey();
+    Mat tempHist;
+    computeHistogram(imgSrc[i], tempHist);
+    histosSrc.push_back(displayHistogram(tempHist));
+    entropyCalculus(imgSrc[i], tempHist);
+  }
 
   return 0;
 }
