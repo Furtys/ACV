@@ -223,8 +223,8 @@ void applyMask(vector<Mat> & imgSrcDCT, int mask = 0)
   Rect masque;
 
   if(mask == 0){
-    x = (nbCols/2) + 10;
-    y = (nbRows/2) + 10;
+    x = (nbCols/2);
+    y = (nbRows/2);
     width = nbCols - x;
     height = nbRows - y;
 
@@ -232,7 +232,7 @@ void applyMask(vector<Mat> & imgSrcDCT, int mask = 0)
     masque = Rect(x, y, width, height);
   }
   else if(mask == 1){
-    x = (nbCols/2) + 10;
+    x = (nbCols/2);
     y = 0;
     width = nbCols - x;
     height = nbRows - y;
@@ -242,7 +242,7 @@ void applyMask(vector<Mat> & imgSrcDCT, int mask = 0)
   }
   else if(mask == 2){
     x = 0;
-    y = (nbRows/2) + 10;
+    y = (nbRows/2);
     width = nbCols - x;
     height = nbRows - y;
 
@@ -251,9 +251,9 @@ void applyMask(vector<Mat> & imgSrcDCT, int mask = 0)
   }
   else if(mask == 3){
     x = 0;
-    y = 0;
-    width = nbCols/2;
-    height = nbRows/2;
+    y = (nbRows/2);
+    width = (nbCols/2);
+    height = nbRows - y;
 
     std::cout << "X : " << x << " Y : " << y << " Width : " << width << " Height : " << height << std::endl;
     masque = Rect(x, y, width, height);
