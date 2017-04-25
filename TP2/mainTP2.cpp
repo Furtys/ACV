@@ -177,7 +177,7 @@ void inverseDCT(const vector<Mat> &vecImgSrcDCT, vector<Mat> &vecImgSrcinvDCT){
 //=======================================================================================
 // Display coef DCT
 //=======================================================================================
-void display_DCT(vector<Mat> &vecImgSrcDCT){
+void display_DCT(const vector<Mat> &vecImgSrcDCT){
   int rows;
   int cols;
 
@@ -187,12 +187,14 @@ void display_DCT(vector<Mat> &vecImgSrcDCT){
     double maxVal;
     minMaxLoc(vecImgSrcDCT[k], NULL, &maxVal, NULL, NULL);
 
+    Mat res(vecImgSrcDCT[k].size(), CV_32FC1);
+
     rows = vecImgSrcDCT[k].rows;
     cols = vecImgSrcDCT[k].cols;
 
     for(int i = 0; i < rows; i++){
       for(int j = 0; j < cols; j++){
-          vecImgSrcDCT[k].at<float>(i,j) = log(1+fabs(vecImgSrcDCT[k].at<float>(i,j)))/log(1+maxVal)*255;
+          res.at<float>(i,j) = log(1+fabs(vecImgSrcDCT[k].at<float>(i,j)))/log(1+maxVal)*255;
       }
     }
 
@@ -202,6 +204,9 @@ void display_DCT(vector<Mat> &vecImgSrcDCT){
     // applyColorMap(in, out, COLORMAP_JET);
     // imshow("Coefficient DCT", norm_0_255(out));
     // waitKey();
+
+    imshow("Coefficients DCT", norm_0_255(res));
+    waitKey();
   }
 }
 
@@ -247,15 +252,15 @@ void applyMask(vector<Mat> & imgSrcDCT, int mask = 0)
   else if(mask == 3){
     x = 0;
     y = 0;
-    width = nbCols - x;
-    height = nbRows - y;
+    width = nbCols/2;
+    height = nbRows/2;
 
     std::cout << "X : " << x << " Y : " << y << " Width : " << width << " Height : " << height << std::endl;
     masque = Rect(x, y, width, height);
   }
 
   for(int k = 0; k < 3; k ++){
-    //imgSrcDCT[k](masque).setTo(0);
+    imgSrcDCT[k](masque).setTo(0);
   }
 }
 
@@ -315,8 +320,8 @@ int main(int argc, char** argv){
 
 
   //Affichage des coefficients DCT et de l'entropie des coefficients
-  vector<Mat> imgSrcDCTDisplayed = imgSrcDCT;
-  display_DCT(imgSrcDCTDisplayed);
+  //vector<Mat> imgSrcDCTDisplayed = imgSrcDCT;
+  display_DCT(imgSrcDCT);
   vector<Mat> histosCoef;
   /*std::cout << "Entropie des coefficients" << std::endl;
   for(int i = 0; i < 3; i ++){
@@ -342,14 +347,9 @@ int main(int argc, char** argv){
 
   //2.3 - Annulation des coefficients DCT
   std::cout << "Annulation des coefficients" << std::endl;
-  //applyMask(imgSrcDCT, 0);
-  imgSrcDCTDisplayed.clear();
-  imgSrcDCTDisplayed = imgSrcDCT;
-  display_DCT(imgSrcDCTDisplayed);
-  for(int i = 0; i < 3; i ++){
-    imshow("Coefficient DCT", norm_0_255(imgSrcDCTDisplayed[i]));
-    waitKey();
-  }
+  //
+  applyMask(imgSrcDCT, 3);
+  display_DCT(imgSrcDCT);
   inverseDCT(imgSrcDCT, imgSrcInverseDCT);
   std::cout << "PSNR image source et DCT erased" << std::endl;
   psnr(imgSrc[0], imgSrcInverseDCT[0]);
