@@ -259,6 +259,70 @@ void applyMask(vector<Mat> & imgSrcDCT, int mask = 0)
   }
 }
 
+float MICD_1D(const Mat & I,int i, int j)
+{
+  if(j==0) return 128;
+  else
+    return I.at<float>(i,j-1);
+}
+
+float MICD_2D(const Mat & I,int i, int j)
+{
+  if(j==0 && i==0)  return 128;
+  else if(j==0)     return (I.at<float>(i-1,j) + 128)/2;
+  else if(i==0)     return (I.at<float>(i,j-1) + 128)/2;
+  else              return (I.at<float>(i,j-1) + I.at<float>(i-1,j))/2;
+}
+
+float MICDA(const Mat & I,int i, int j)
+{
+  float a,b,c;
+  if(j==0 && i==0)  return a=c=b=128;
+  else if(j==0)     return a=b=128;
+  else if(i==0)     return c=b=128;
+
+  if(abs(c-b) < abs(a-b))
+    return a;
+  else
+    return b;
+}
+
+
+void codage(const Mat & I,Mat & imgPrediction, int mode = 0, int q = 1)
+{
+  Mat imgDecodee(I.size(),CV_32FC1);
+
+  float prediction;
+  float dequantif;
+
+  for (int i = 0; i < I.rows; ++i)
+  {
+    for (int j = 0; j < I.cols; ++j)
+    {
+      switch(mode){
+        case 0: 
+          prediction = MICD_1D(imgDecodee,i,j);
+          break;
+        
+        case 1: 
+          prediction = MICD_2D(imgDecodee,i,j);
+          break;
+        
+        case 2: 
+          prediction = MICDA(imgDecodee,i,j);
+          break;
+      }
+
+      imgPrediction.at<float>(i,j) = floor( (I.at<float>(i,j) - prediction)/q + 0.5 );
+      dequantif = imgPrediction.at<float>(i,j) * q;
+      imgDecodee.at<float>(i,j) = dequantif + prediction;
+    }
+  }
+
+  //return imgPrediction;
+}
+
+
 //=======================================================================================
 //=======================================================================================
 // MAIN
@@ -271,6 +335,9 @@ int main(int argc, char** argv){
   }
 
   Mat inputImageSrc;
+  
+
+
   // Ouvrir l'image d'entr�e et v�rifier que l'ouverture du fichier se d�roule normalement
   inputImageSrc = imread(argv[1], CV_LOAD_IMAGE_COLOR);
   if(!inputImageSrc.data ) { // Check for invalid input
@@ -280,8 +347,6 @@ int main(int argc, char** argv){
   }
 
   vector<Mat> imgSrc;
-  vector<Mat> imgSrcDCT;
-  vector<Mat> imgSrcInverseDCT;
   Mat img32FC(inputImageSrc.size(), CV_32FC3);
 
 	//Conversion en YCrCb
@@ -295,76 +360,12 @@ int main(int argc, char** argv){
 	imshow("inputImageSrcY", norm_0_255(imgSrc[0]));
 	cvWaitKey();
 
-  //calcul de la DCT de imgSrc
-  cout << "----------- COMPUTE DCT --------------" << endl;
-  DCT(imgSrc, imgSrcDCT);
-  //Calcul de la DCT inverse de imgSrcDCT
-  cout << "----------- COMPUTE inverseDCT --------------" << endl;
-  inverseDCT(imgSrcDCT, imgSrcInverseDCT);
-  imshow("Inverse DCT Y", norm_0_255(imgSrcInverseDCT[0]));
-  imshow("Inverse DCT Cr", norm_0_255(imgSrcInverseDCT[1]));
-  imshow("Inverse DCT Cb", norm_0_255(imgSrcInverseDCT[2]));
-  waitKey();
+  Mat predictionError(imgSrc[0].size(),CV_32FC1);
+  codage(imgSrc[0], predictionError, 1);
 
-	cout << "Calculs between " << argv[1] << "_Y and inverseDCT_Y : "<< "\n";
-	psnr(imgSrc[0], imgSrcInverseDCT[0]);
-	cout << "Calculs between " << argv[1] << "_Cr and inverseDCT_Cr : "<< "\n";
-	psnr(imgSrc[1], imgSrcInverseDCT[1]);
-	cout << "Calculs between " << argv[1] << "_Cb and inverseDCT_Cb : "<< "\n";
-	psnr(imgSrc[2], imgSrcInverseDCT[2]);
+  imshow("erreur de prediction", norm_0_255(predictionError));
+  cvWaitKey();
 
-
-  //Affichage des coefficients DCT et de l'entropie des coefficients
-  vector<Mat> imgSrcDCTDisplayed = imgSrcDCT;
-  display_DCT(imgSrcDCTDisplayed);
-  vector<Mat> histosCoef;
-  /*std::cout << "Entropie des coefficients" << std::endl;
-  for(int i = 0; i < 3; i ++){
-    imshow("Coefficient DCT", norm_0_255(imgSrcDCTDisplayed[i]));
-    waitKey();
-    Mat tempHist;
-    computeHistogram(imgSrcDCT[i], tempHist);
-    histosCoef.push_back(displayHistogram(tempHist));
-    entropyCalculus(imgSrcDCT[i], tempHist);
-  }*/
-
-  //Calcul entropie image source
-/*  vector<Mat> histosSrc;
-  std::cout << "Entropie de l'image source" << std::endl;
-  for(int i = 0; i < 3; i ++){
-    imshow("Image originale", norm_0_255(imgSrc[i]));
-    waitKey();
-    Mat tempHist;
-    computeHistogram(imgSrc[i], tempHist);
-    histosSrc.push_back(displayHistogram(tempHist));
-    entropyCalculus(imgSrc[i], tempHist);
-  }*/
-
-  //2.3 - Annulation des coefficients DCT
-  std::cout << "Annulation des coefficients" << std::endl;
-  //applyMask(imgSrcDCT, 0);
-  imgSrcDCTDisplayed.clear();
-  imgSrcDCTDisplayed = imgSrcDCT;
-  display_DCT(imgSrcDCTDisplayed);
-  for(int i = 0; i < 3; i ++){
-    imshow("Coefficient DCT", norm_0_255(imgSrcDCTDisplayed[i]));
-    waitKey();
-  }
-  inverseDCT(imgSrcDCT, imgSrcInverseDCT);
-  std::cout << "PSNR image source et DCT erased" << std::endl;
-  psnr(imgSrc[0], imgSrcInverseDCT[0]);
-  imshow("Inverse DCT Y_erased", norm_0_255(imgSrcInverseDCT[0]));
-  waitKey();
-  // int nbRows = inputImageSrc.rows;
-  // int nbCols = inputImageSrc.cols;
-  // int x = (nbRows/2) + 10;
-  // int y = (nbCols/2) + 10;
-  // int width = nbCols - y;
-  // int height = nbRows - x;
-  //
-  // std::cout << "X : " << x << " Y : " << y << " Width : " << width << " Height : " << height << std::endl;
-  // Rect mask(x, y, width, height);
-  // imgSrcDCT[0](mask) = Scalar(0);
 
   return 0;
 }
