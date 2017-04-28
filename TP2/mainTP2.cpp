@@ -200,6 +200,18 @@ void blockDCT(const vector<Mat> &vecImgSrc, vector<Mat> &vecImgSrcDCT, bool inve
             0, 0, 0, 0, 0, 0, 0, 0;
     mask = m1;
   }
+  else if(maskUsed == 2){
+    Mat_<float> m1(8, 8);
+    m1 << 16, 11, 10, 16, 24, 40, 51, 61,
+        12, 12, 14, 19, 26, 58, 60, 55,
+        14, 13, 16, 24, 40, 57, 69, 56,
+        14, 17, 22, 29, 51, 87, 80, 62,
+        18, 22, 37, 56, 68, 109, 103, 77,
+        24, 35, 55, 64, 81, 104, 113, 92,
+        49, 64, 78, 87, 103, 121, 120, 101,
+        72, 92, 95, 98, 112, 100, 103, 99;
+    mask = m1;
+  }
 
 
   for(int k = 0; k < 3; k++){
@@ -212,13 +224,24 @@ void blockDCT(const vector<Mat> &vecImgSrc, vector<Mat> &vecImgSrcDCT, bool inve
 
         if(!inverse){
           dct(block, temp(window));
+
+          if(maskUsed == 1){
+            temp(window) = temp(window).mul(mask);
+          }
+          if(maskUsed == 2){
+            for(int iMask = 0; iMask < 8; iMask++){
+              for(int jMask = 0; jMask < 8; jMask++){
+                temp(window).at<float>(iMask, jMask) = round(temp(window).at<float>(iMask, jMask) / mask.at<float>(iMask, jMask));
+              }
+            }
+          }
         }
         if(inverse){
+          if(maskUsed == 2){
+            block = block.mul(mask);
+          }
           dct(block, temp(window), DCT_INVERSE);
-        }
 
-        if(maskUsed == 1){
-          temp(window) = temp(window).mul(mask);
         }
 
       }
@@ -230,8 +253,8 @@ void blockDCT(const vector<Mat> &vecImgSrc, vector<Mat> &vecImgSrcDCT, bool inve
 //=======================================================================================
 // blockDCT
 //=======================================================================================
-void inverseblockDCT(const vector<Mat> &vecImgSrc, vector<Mat> &vecImgSrcDCT){
-  blockDCT(vecImgSrc, vecImgSrcDCT, true);
+void inverseblockDCT(const vector<Mat> &vecImgSrc, vector<Mat> &vecImgSrcDCT, int maskUsed = 0){
+  blockDCT(vecImgSrc, vecImgSrcDCT, true, maskUsed);
 }
 //=======================================================================================
 // Display coef DCT
@@ -432,9 +455,9 @@ int main(int argc, char** argv){
   waitKey();
 
   //3.7 - DCT Block 8x8
-  blockDCT(imgSrc, imgSrcDCT, false, 1);
+  blockDCT(imgSrc, imgSrcDCT, false, 2);
   display_DCT(imgSrcDCT, "Coefficients DCT block 8x8");
-  inverseblockDCT(imgSrcDCT, imgSrcInverseDCT);
+  inverseblockDCT(imgSrcDCT, imgSrcInverseDCT, 2);
   std::cout << "PSNR image source et DCT block" << std::endl;
   psnr(imgSrc[0], imgSrcInverseDCT[0]);
   imshow("Inverse DCT Y block", norm_0_255(imgSrcInverseDCT[0]));
@@ -444,18 +467,16 @@ int main(int argc, char** argv){
   imshow("Inverse DCT Cb block", norm_0_255(imgSrcInverseDCT[2]));
   waitKey();
 
-  //3.8
-
-  Mat_<float> m1(8, 8);
-  m1 << 16, 11, 10, 16, 24, 40, 51, 61,
-      12, 12, 14, 19, 26, 58, 60, 55,
-      14, 13, 16, 24, 40, 57, 69, 56,
-      14, 17, 22, 29, 51, 87, 80, 62,
-      18, 22, 37, 56, 68, 109, 103, 77,
-      24, 35, 55, 64, 81, 104, 113, 92,
-      49, 64, 78, 87, 103, 121, 120, 101,
-      72, 92, 95, 98, 112, 100, 103, 99;
-  Mat coefJPEG = m1;
+  //Fusions des canaux
+  finalImg32F.release();
+  finalImg.release();
+  merge(imgSrcInverseDCT, finalImg32F);
+  //Conversion en uchar pour affichage
+  finalImg32F.convertTo(finalImg, CV_8UC3);
+  //Conversion en BGR
+  toBGR(finalImg, finalImg);
+  imshow("Final Image Block", finalImg);
+  waitKey();
 
   return 0;
 }
