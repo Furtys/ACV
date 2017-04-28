@@ -185,7 +185,23 @@ void inverseDCT(const vector<Mat> &vecImgSrcDCT, vector<Mat> &vecImgSrcinvDCT){
 //=======================================================================================
 // blockDCT
 //=======================================================================================
-void blockDCT(const vector<Mat> &vecImgSrc, vector<Mat> &vecImgSrcDCT, bool inverse = false){
+void blockDCT(const vector<Mat> &vecImgSrc, vector<Mat> &vecImgSrcDCT, bool inverse = false, int maskUsed = 0){
+  vecImgSrcDCT.clear();
+  Mat mask;
+  if(maskUsed == 1){
+    Mat_<float> m1(8,8);
+    m1 << 1, 1, 1, 1, 1, 0, 0, 0,
+            1, 1, 1, 1, 0, 0, 0, 0,
+            1, 1, 1, 0, 0, 0, 0, 0,
+            1, 1, 0, 0, 0, 0, 0, 0,
+            1, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0;
+    mask = m1;
+  }
+
+
   for(int k = 0; k < 3; k++){
     Mat temp(vecImgSrc[k].size(), CV_32FC1);
 
@@ -199,6 +215,10 @@ void blockDCT(const vector<Mat> &vecImgSrc, vector<Mat> &vecImgSrcDCT, bool inve
         }
         if(inverse){
           dct(block, temp(window), DCT_INVERSE);
+        }
+
+        if(maskUsed == 1){
+          temp(window) = temp(window).mul(mask);
         }
 
       }
@@ -216,7 +236,7 @@ void inverseblockDCT(const vector<Mat> &vecImgSrc, vector<Mat> &vecImgSrcDCT){
 //=======================================================================================
 // Display coef DCT
 //=======================================================================================
-void display_DCT(const vector<Mat> &vecImgSrcDCT){
+void display_DCT(const vector<Mat> &vecImgSrcDCT, string title = "Coefficiens DCT"){
   int rows;
   int cols;
 
@@ -244,7 +264,7 @@ void display_DCT(const vector<Mat> &vecImgSrcDCT){
     // imshow("Coefficient DCT", norm_0_255(out));
     // waitKey();
 
-    imshow("Coefficients DCT", norm_0_255(res));
+    imshow(title, norm_0_255(res));
     waitKey();
   }
 }
@@ -411,17 +431,20 @@ int main(int argc, char** argv){
   imshow("Final Image", finalImg);
   waitKey();
 
-  //3 - DCT Block 8x8
-  imgSrcDCT.clear();
-  blockDCT(imgSrc, imgSrcDCT);
-  display_DCT(imgSrcDCT);
+  //3.7 - DCT Block 8x8
+  blockDCT(imgSrc, imgSrcDCT, false, 1);
+  display_DCT(imgSrcDCT, "Coefficients DCT block 8x8");
   inverseblockDCT(imgSrcDCT, imgSrcInverseDCT);
+  std::cout << "PSNR image source et DCT block" << std::endl;
+  psnr(imgSrc[0], imgSrcInverseDCT[0]);
   imshow("Inverse DCT Y block", norm_0_255(imgSrcInverseDCT[0]));
   waitKey();
   imshow("Inverse DCT Cr block", norm_0_255(imgSrcInverseDCT[1]));
   waitKey();
   imshow("Inverse DCT Cb block", norm_0_255(imgSrcInverseDCT[2]));
   waitKey();
+
+  //3.8
 
   Mat_<float> m1(8, 8);
   m1 << 16, 11, 10, 16, 24, 40, 51, 61,
