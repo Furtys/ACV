@@ -122,7 +122,7 @@ double eqm(const Mat & img1, const Mat & img2)
 		cout << "Error, images need to have the same size. \n";
 	}
 
-	double EQM;
+	double EQM = 0;
 
 	for(int i = 0; i < rows; i++){
 		for(int j = 0; j < cols; j++){
