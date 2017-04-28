@@ -37,6 +37,13 @@ void toYCrCb(const Mat & imgSrc, Mat &ImgSrcYCrCb){
 }
 
 //=======================================================================================
+// to BGR
+//=======================================================================================
+void toBGR(const Mat & imgSrcYCrCb, Mat &ImgSrc){
+	cvtColor(imgSrcYCrCb, ImgSrc, CV_YCrCb2BGR);
+}
+
+//=======================================================================================
 // computeHistogram
 //=======================================================================================
 void computeHistogram(const Mat& inputComponent, Mat& myHist)
@@ -154,10 +161,16 @@ double psnr(const Mat & imgSrc, const Mat & imgDCT)
 //=======================================================================================
 // DCT
 //=======================================================================================
-void DCT(const vector<Mat> &vecImgSrc, vector<Mat> &vecImgSrcDCT){
-  for(int i = 0; i < 3; i++){
-    Mat temp;
-    dct(vecImgSrc[i], temp);
+void DCT(const vector<Mat> &vecImgSrc, vector<Mat> &vecImgSrcDCT, bool inverse = false){
+  vecImgSrcDCT.clear();
+  for(int k = 0; k < 3; k++){
+    Mat temp(vecImgSrc[k].size(), CV_32FC1);
+    if(!inverse){
+      dct(vecImgSrc[k], temp);
+    }
+    if(inverse){
+      dct(vecImgSrc[k], temp, DCT_INVERSE);
+    }
     vecImgSrcDCT.push_back(temp);
   }
 }
@@ -166,14 +179,40 @@ void DCT(const vector<Mat> &vecImgSrc, vector<Mat> &vecImgSrcDCT){
 // DCT Inverse
 //=======================================================================================
 void inverseDCT(const vector<Mat> &vecImgSrcDCT, vector<Mat> &vecImgSrcinvDCT){
-  vecImgSrcinvDCT.clear();
-  for(int i = 0; i < 3; i++){
-    Mat temp;
-    dct(vecImgSrcDCT[i], temp, DCT_INVERSE);
-    vecImgSrcinvDCT.push_back(temp);
+  DCT(vecImgSrcDCT, vecImgSrcinvDCT, true);
+}
+
+//=======================================================================================
+// blockDCT
+//=======================================================================================
+void blockDCT(const vector<Mat> &vecImgSrc, vector<Mat> &vecImgSrcDCT, bool inverse = false){
+  for(int k = 0; k < 3; k++){
+    Mat temp(vecImgSrc[k].size(), CV_32FC1);
+
+    for(int i = 0; i < vecImgSrc[k].rows; i+=8){
+      for(int j = 0; j < vecImgSrc[k].cols; j+=8){
+        Rect window(i, j, 8, 8);
+        Mat block = vecImgSrc[k](window);
+
+        if(!inverse){
+          dct(block, temp(window));
+        }
+        if(inverse){
+          dct(block, temp(window), DCT_INVERSE);
+        }
+
+      }
+    }
+    vecImgSrcDCT.push_back(temp);
   }
 }
 
+//=======================================================================================
+// blockDCT
+//=======================================================================================
+void inverseblockDCT(const vector<Mat> &vecImgSrc, vector<Mat> &vecImgSrcDCT){
+  blockDCT(vecImgSrc, vecImgSrcDCT, true);
+}
 //=======================================================================================
 // Display coef DCT
 //=======================================================================================
@@ -270,6 +309,7 @@ void applyMask(vector<Mat> & imgSrcDCT, int mask = 0)
 //=======================================================================================
 //=======================================================================================
 int main(int argc, char** argv){
+
   if (argc < 2){
     std::cout << "No image data or not enough ... At least one argument is required! \n";
     return -1;
@@ -348,23 +388,51 @@ int main(int argc, char** argv){
   //2.3 - Annulation des coefficients DCT
   std::cout << "Annulation des coefficients" << std::endl;
   //
-  applyMask(imgSrcDCT, 3);
+  applyMask(imgSrcDCT, 0);
   display_DCT(imgSrcDCT);
   inverseDCT(imgSrcDCT, imgSrcInverseDCT);
   std::cout << "PSNR image source et DCT erased" << std::endl;
   psnr(imgSrc[0], imgSrcInverseDCT[0]);
   imshow("Inverse DCT Y_erased", norm_0_255(imgSrcInverseDCT[0]));
   waitKey();
-  // int nbRows = inputImageSrc.rows;
-  // int nbCols = inputImageSrc.cols;
-  // int x = (nbRows/2) + 10;
-  // int y = (nbCols/2) + 10;
-  // int width = nbCols - y;
-  // int height = nbRows - x;
-  //
-  // std::cout << "X : " << x << " Y : " << y << " Width : " << width << " Height : " << height << std::endl;
-  // Rect mask(x, y, width, height);
-  // imgSrcDCT[0](mask) = Scalar(0);
+  imshow("Inverse DCT Cr_erased", norm_0_255(imgSrcInverseDCT[1]));
+  waitKey();
+  imshow("Inverse DCT Cb_erased", norm_0_255(imgSrcInverseDCT[2]));
+  waitKey();
+
+  //Fusions des canaux
+  Mat finalImg32F;
+  merge(imgSrcInverseDCT, finalImg32F);
+  //Conversion en uchar pour affichage
+  Mat finalImg;
+  finalImg32F.convertTo(finalImg, CV_8UC3);
+  //Conversion en BGR
+  toBGR(finalImg, finalImg);
+  imshow("Final Image", finalImg);
+  waitKey();
+
+  //3 - DCT Block 8x8
+  imgSrcDCT.clear();
+  blockDCT(imgSrc, imgSrcDCT);
+  display_DCT(imgSrcDCT);
+  inverseblockDCT(imgSrcDCT, imgSrcInverseDCT);
+  imshow("Inverse DCT Y block", norm_0_255(imgSrcInverseDCT[0]));
+  waitKey();
+  imshow("Inverse DCT Cr block", norm_0_255(imgSrcInverseDCT[1]));
+  waitKey();
+  imshow("Inverse DCT Cb block", norm_0_255(imgSrcInverseDCT[2]));
+  waitKey();
+
+  Mat_<float> m1(8, 8);
+  m1 << 16, 11, 10, 16, 24, 40, 51, 61,
+      12, 12, 14, 19, 26, 58, 60, 55,
+      14, 13, 16, 24, 40, 57, 69, 56,
+      14, 17, 22, 29, 51, 87, 80, 62,
+      18, 22, 37, 56, 68, 109, 103, 77,
+      24, 35, 55, 64, 81, 104, 113, 92,
+      49, 64, 78, 87, 103, 121, 120, 101,
+      72, 92, 95, 98, 112, 100, 103, 99;
+  Mat coefJPEG = m1;
 
   return 0;
 }
