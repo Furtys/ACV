@@ -106,7 +106,7 @@ void entropyCalculus(const Mat& errorMap, Mat& histo)
 //=======================================================================================
 // EQM
 //=======================================================================================
-double eqm(const Mat & img1, const Mat & img2)
+float eqm(const Mat & img1, const Mat & img2)
 {
 	int rows = img1.rows;
 	int cols = img1.cols;
@@ -115,12 +115,12 @@ double eqm(const Mat & img1, const Mat & img2)
 		cout << "Error, images need to have the same size. \n";
 	}
 
-	double EQM;
+	float EQM = 0;
 
 	for(int i = 0; i < rows; i++){
 		for(int j = 0; j < cols; j++){
-      double pixel1 = (double)img1.at<unsigned char>(i, j);
-      double pixel2 = (double)img2.at<unsigned char>(i, j);
+	      float pixel1 = img1.at<float>(i, j);
+	      float pixel2 = img2.at<float>(i, j);
 			EQM += (pixel1 - pixel2) * (pixel1 - pixel2);
 		}
 	}
@@ -135,129 +135,21 @@ double eqm(const Mat & img1, const Mat & img2)
 //=======================================================================================
 double psnr(const Mat & imgSrc, const Mat & imgDCT)
 {
-  Mat imgDCT8Usrc(imgSrc.size(), CV_8UC1);
-  Mat imgDCT8UDCT(imgDCT.size(), CV_8UC1);
-  imgSrc.convertTo(imgDCT8Usrc, CV_8UC1);
-  imgDCT.convertTo(imgDCT8UDCT, CV_8UC1);
 
-	double EQM = eqm(imgDCT8Usrc, imgDCT8UDCT);
+	float EQM = eqm(imgSrc, imgDCT);
 
 	if(EQM == 0){
 		cout << "Error, PSNR can't compare two identic images \n";
 		return -1;
 	}
-	double psnr = 10 * log10(65025/EQM);
+	float psnr = 10 * log10(65025/EQM);
 	cout << "PSNR : " << psnr << "\n";
  	return psnr;
 }
 
 //=======================================================================================
-// DCT
+// Predicteur
 //=======================================================================================
-void DCT(const vector<Mat> &vecImgSrc, vector<Mat> &vecImgSrcDCT){
-  for(int i = 0; i < 3; i++){
-    Mat temp;
-    dct(vecImgSrc[i], temp);
-    vecImgSrcDCT.push_back(temp);
-  }
-}
-
-//=======================================================================================
-// DCT Inverse
-//=======================================================================================
-void inverseDCT(const vector<Mat> &vecImgSrcDCT, vector<Mat> &vecImgSrcinvDCT){
-  vecImgSrcinvDCT.clear();
-  for(int i = 0; i < 3; i++){
-    Mat temp;
-    dct(vecImgSrcDCT[i], temp, DCT_INVERSE);
-    vecImgSrcinvDCT.push_back(temp);
-  }
-}
-
-//=======================================================================================
-// Display coef DCT
-//=======================================================================================
-void display_DCT(vector<Mat> &vecImgSrcDCT){
-  int rows;
-  int cols;
-
-  vector<double*> maxValLoc;
-
-  for(int k = 0; k < 3; k++){
-    double maxVal;
-    minMaxLoc(vecImgSrcDCT[k], NULL, &maxVal, NULL, NULL);
-
-    rows = vecImgSrcDCT[k].rows;
-    cols = vecImgSrcDCT[k].cols;
-
-    for(int i = 0; i < rows; i++){
-      for(int j = 0; j < cols; j++){
-          vecImgSrcDCT[k].at<float>(i,j) = log(1+fabs(vecImgSrcDCT[k].at<float>(i,j)))/log(1+maxVal)*255;
-      }
-    }
-
-    // Mat in(vecImgSrcDCT[k].size(), CV_8UC1);
-    // vecImgSrcDCT[k].convertTo(in, CV_8UC1);
-    // Mat out(vecImgSrcDCT[k].size(), CV_8UC1);
-    // applyColorMap(in, out, COLORMAP_JET);
-    // imshow("Coefficient DCT", norm_0_255(out));
-    // waitKey();
-  }
-}
-
-//=======================================================================================
-// Appliquer mask sur DCT
-//=======================================================================================
-void applyMask(vector<Mat> & imgSrcDCT, int mask = 0)
-{
-  int x, y, width, height;
-
-  int nbRows = imgSrcDCT[0].rows;
-  int nbCols = imgSrcDCT[0].cols;
-
-  Rect masque;
-
-  if(mask == 0){
-    x = (nbCols/2) + 10;
-    y = (nbRows/2) + 10;
-    width = nbCols - x;
-    height = nbRows - y;
-
-    std::cout << "X : " << x << " Y : " << y << " Width : " << width << " Height : " << height << std::endl;
-    masque = Rect(x, y, width, height);
-  }
-  else if(mask == 1){
-    x = (nbCols/2) + 10;
-    y = 0;
-    width = nbCols - x;
-    height = nbRows - y;
-
-    std::cout << "X : " << x << " Y : " << y << " Width : " << width << " Height : " << height << std::endl;
-    masque = Rect(x, y, width, height);
-  }
-  else if(mask == 2){
-    x = 0;
-    y = (nbRows/2) + 10;
-    width = nbCols - x;
-    height = nbRows - y;
-
-    std::cout << "X : " << x << " Y : " << y << " Width : " << width << " Height : " << height << std::endl;
-    masque = Rect(x, y, width, height);
-  }
-  else if(mask == 3){
-    x = 0;
-    y = 0;
-    width = nbCols - x;
-    height = nbRows - y;
-
-    std::cout << "X : " << x << " Y : " << y << " Width : " << width << " Height : " << height << std::endl;
-    masque = Rect(x, y, width, height);
-  }
-
-  for(int k = 0; k < 3; k ++){
-    //imgSrcDCT[k](masque).setTo(0);
-  }
-}
 
 float MICD_1D(const Mat & I,int i, int j)
 {
@@ -276,50 +168,189 @@ float MICD_2D(const Mat & I,int i, int j)
 
 float MICDA(const Mat & I,int i, int j)
 {
-  float a,b,c;
-  if(j==0 && i==0)  return a=c=b=128;
-  else if(j==0)     return a=b=128;
-  else if(i==0)     return c=b=128;
+	float a, b, c;
 
-  if(abs(c-b) < abs(a-b))
-    return a;
-  else
-    return b;
+	if(j==0 && i==0)
+	{
+		a=b=c=128;
+	}  
+  	else if(j==0) 
+  	{
+  		b=c=128;
+  		a=I.at<float>(i-1,j);
+  	}    
+  	else if(i==0)
+  	{
+  		a=b=128;
+  		c=I.at<float>(i,j-1);
+  	}     
+  	else  
+  	{
+  		a=I.at<float>(i-1,j);
+  		b=I.at<float>(i-1,j-1);
+  		c=I.at<float>(i,j-1);
+  	}    
+
+  	if(abs(c-b) < abs(a-b))
+		return a;
+	else
+	    return b;        
 }
 
+//=======================================================================================
+// Codage
+//=======================================================================================
 
 void codage(const Mat & I,Mat & imgPrediction, int mode = 0, int q = 1)
 {
-  Mat imgDecodee(I.size(),CV_32FC1);
+  	Mat imgDecodee(I.size(),CV_32FC1);
 
-  float prediction;
-  float dequantif;
+  	float prediction;
+  	float dequantif;
 
-  for (int i = 0; i < I.rows; ++i)
-  {
-    for (int j = 0; j < I.cols; ++j)
-    {
-      switch(mode){
-        case 0: 
-          prediction = MICD_1D(imgDecodee,i,j);
-          break;
-        
-        case 1: 
-          prediction = MICD_2D(imgDecodee,i,j);
-          break;
-        
-        case 2: 
-          prediction = MICDA(imgDecodee,i,j);
-          break;
-      }
+  	for (int i = 0; i < I.rows; ++i)
+  	{
+    	for (int j = 0; j < I.cols; ++j)
+    	{
+      		switch(mode){
+		        case 0: 
+		          prediction = MICD_1D(imgDecodee,i,j);
+		          break;
+		        
+		        case 1: 
+		          prediction = MICD_2D(imgDecodee,i,j);
+		          break;
+		        
+		        case 2: 
+		          prediction = MICDA(imgDecodee,i,j);
+		          break;
+      	}
 
-      imgPrediction.at<float>(i,j) = floor( (I.at<float>(i,j) - prediction)/q + 0.5 );
-      dequantif = imgPrediction.at<float>(i,j) * q;
-      imgDecodee.at<float>(i,j) = dequantif + prediction;
-    }
-  }
+	    	imgPrediction.at<float>(i,j) = floor( (I.at<float>(i,j) - prediction)/q + 0.5 );
+	    	dequantif = imgPrediction.at<float>(i,j) * q;
+	    	imgDecodee.at<float>(i,j) = dequantif + prediction;
+    	}
+  	}
 
-  //return imgPrediction;
+  	for (int i = 0; i < I.rows; ++i)
+   	{
+   		for (int j = 0; j < I.cols; ++j)
+    	{
+    		imgPrediction.at<float>(i,j) += 128;
+    	}
+	}
+}
+
+void codage_competitif(const Mat & I,Mat & imgPrediction, Mat & imgPredicteur, int q = 1)
+{
+	Mat imgDecodee(I.size(),CV_32FC1);
+
+	float prediction;
+	float dequantif;
+	float a, b, c, val,aa ,bb, cc;
+
+	for (int i = 0; i < I.rows; ++i)
+  	{
+  		for (int j = 0; j < I.cols; ++j)
+    	{
+	    	aa = MICD_1D(imgDecodee,i,j);
+	    	bb = MICD_2D(imgDecodee,i,j);
+	    	cc = MICDA(imgDecodee,i,j);
+	    	val = I.at<float>(i,j);
+	    	a = abs(val - aa);
+	    	b = abs(val - bb);
+	    	c = abs(val - cc);
+	    	
+	    	if(a < b && a < c) 
+	    	{
+	    		imgPredicteur.at<float>(i,j) = 0;
+	    		prediction = aa;
+	    	}
+	    	else if(b < c)
+	    	{
+	    		imgPredicteur.at<float>(i,j) = 1;
+	    		prediction = bb;
+	    	}
+	    	else
+	    	{
+	    		imgPredicteur.at<float>(i,j) = 2;
+	    		prediction = cc;
+	    	}
+    
+		    imgPrediction.at<float>(i,j) = floor( (I.at<float>(i,j) - prediction)/q + 0.5 );
+		    dequantif = imgPrediction.at<float>(i,j) * q;
+		    imgDecodee.at<float>(i,j) = dequantif + prediction;
+		}
+   	}
+
+   	for (int i = 0; i < I.rows; ++i)
+   	{
+   		for (int j = 0; j < I.cols; ++j)
+    	{
+    		imgPrediction.at<float>(i,j) += 128;
+    	}
+	}
+}
+//=======================================================================================
+// Décodage
+//=======================================================================================
+
+void decodage(const Mat & imgPrediction,Mat & I, int mode = 0, int q = 1)
+{
+  	float prediction;
+  	float dequantif;
+
+  	for (int i = 0; i < I.rows; ++i)
+  	{
+    	for (int j = 0; j < I.cols; ++j)
+    	{
+      		switch(mode){
+		        case 0: 
+		          prediction = MICD_1D(I,i,j);
+		          break;
+		        
+		        case 1: 
+		          prediction = MICD_2D(I,i,j);
+		          break;
+		        
+		        case 2: 
+		          prediction = MICDA(I,i,j);
+		          break;
+      		}
+
+	    	dequantif = (imgPrediction.at<float>(i,j) - 128) * q;
+	    	I.at<float>(i,j) = dequantif + prediction;
+    	}
+  	}
+}
+
+void decodage_competitif(const Mat & imgPrediction, const Mat & imgPredicteur, Mat & I, int q = 1)
+{
+	float prediction;
+  	float dequantif;
+
+  	for (int i = 0; i < I.rows; ++i)
+  	{
+    	for (int j = 0; j < I.cols; ++j)
+    	{
+			if(imgPredicteur.at<float>(i,j) == 0) 
+			{
+				prediction = MICD_1D(I,i,j);
+			}
+			else if(imgPredicteur.at<float>(i,j) == 1)
+			{
+				prediction = MICD_2D(I,i,j);
+			}
+			else
+			{
+				prediction = MICDA(I,i,j);
+			}
+		    
+		    dequantif = (imgPrediction.at<float>(i,j) - 128) * q;
+			I.at<float>(i,j) = dequantif + prediction;
+		}
+	}
+
 }
 
 
@@ -361,9 +392,73 @@ int main(int argc, char** argv){
 	cvWaitKey();
 
   Mat predictionError(imgSrc[0].size(),CV_32FC1);
-  codage(imgSrc[0], predictionError, 1);
+  Mat predictor(imgSrc[0].size(),CV_32FC1);
+  Mat decodee(imgSrc[0].size(),CV_32FC1);
+  Mat histo;
+  
+//=======================================================================================
+// MICD_1D
+//=======================================================================================
+std::cout << "\n--------------- MICD_1D ---------------" << std::endl;
+  codage(imgSrc[0], predictionError, 0, 8);
+  computeHistogram(predictionError, histo);
+  entropyCalculus(predictionError, histo);
+  decodage(predictionError, decodee, 0, 8);
+  psnr(imgSrc[0],decodee);
 
   imshow("erreur de prediction", norm_0_255(predictionError));
+  imshow("image decodee", norm_0_255(decodee));
+  displayHistogram(histo);
+  imwrite((string)argv[1] + "_errorMap_MICD_1D", norm_0_255(predictionError));
+  cvWaitKey();
+
+//=======================================================================================
+// MICD_2D
+//=======================================================================================
+std::cout << "\n--------------- MICD_2D ---------------" << std::endl;
+  codage(imgSrc[0], predictionError, 1, 8);
+  computeHistogram(predictionError, histo);
+  entropyCalculus(predictionError, histo);
+  decodage(predictionError, decodee, 1, 8);
+  psnr(imgSrc[0],decodee);
+
+  imshow("erreur de prediction", norm_0_255(predictionError));
+  imshow("image decodee", norm_0_255(decodee));
+  displayHistogram(histo);
+  imwrite((string)argv[1] + "_errorMap_MICD_2D", norm_0_255(predictionError));
+  cvWaitKey();
+
+//=======================================================================================
+// MICDA
+//=======================================================================================
+std::cout << "\n--------------- MICDA ---------------" << std::endl;
+  codage(imgSrc[0], predictionError, 2, 8);
+  computeHistogram(predictionError, histo);
+  entropyCalculus(predictionError, histo);
+  decodage(predictionError, decodee, 2, 8);
+  psnr(imgSrc[0],decodee);
+
+  imshow("erreur de prediction", norm_0_255(predictionError));
+  imshow("image decodee", norm_0_255(decodee));
+  displayHistogram(histo);
+  imwrite((string)argv[1] + "_errorMap_MICDA", norm_0_255(predictionError));
+  cvWaitKey();
+
+//=======================================================================================
+// Competitif
+//=======================================================================================
+std::cout << "\n--------------- Compet ---------------" << std::endl;
+  codage_competitif(imgSrc[0], predictionError, predictor, 8);
+  computeHistogram(predictionError, histo);
+  entropyCalculus(predictionError, histo);
+  decodage_competitif(predictionError, predictor, decodee, 8);
+  psnr(imgSrc[0],decodee);
+
+  imshow("erreur de prediction", norm_0_255(predictionError));
+  imshow("Predicteur choisi", norm_0_255(predictor));
+  imshow("image decodee", norm_0_255(decodee));
+  imwrite((string)argv[1] + "_errorMap_compet", norm_0_255(predictionError));
+  imwrite((string)argv[1] + "_predictor_choice", norm_0_255(predictor));
   cvWaitKey();
 
 
