@@ -7,6 +7,10 @@ using namespace cv;
 using namespace std;
 
 
+void save_img(Mat imgSrc, String name){
+  imwrite( "./result/" + name, imgSrc );
+}
+
 //==================================================================================  a =====
 // Mat norm_0_255(InputArray _src)
 // Create and return normalized image
@@ -84,6 +88,7 @@ Mat displayHistogram(const Mat& myHist)
 	/// Display
 	namedWindow("Display Histo", CV_WINDOW_AUTOSIZE );
 	imshow("Display Histo", histImage );
+  save_img(histImage, "histogram.jpg");
 	cvWaitKey();
 
   return histImage;
@@ -108,6 +113,14 @@ void entropyCalculus(const Mat& errorMap, Mat& histo)
 
 	}
 	std::cout << "ENTROPY : " << entropy << std::endl;
+}
+
+//=======================================================================================
+// distortionMap
+//=======================================================================================
+void distortionMap(const vector<Mat> & imgSrc, const vector<Mat> & imgDeg, Mat &distoMap)
+{
+	distoMap = imgSrc[0] - imgDeg[0] + 128;
 }
 
 //=======================================================================================
@@ -280,14 +293,15 @@ void display_DCT(const vector<Mat> &vecImgSrcDCT, string title = "Coefficiens DC
       }
     }
 
-    // Mat in(vecImgSrcDCT[k].size(), CV_8UC1);
-    // vecImgSrcDCT[k].convertTo(in, CV_8UC1);
-    // Mat out(vecImgSrcDCT[k].size(), CV_8UC1);
-    // applyColorMap(in, out, COLORMAP_JET);
+    Mat in(vecImgSrcDCT[k].size(), CV_8UC1);
+    res.convertTo(in, CV_8UC1);
+    Mat out(vecImgSrcDCT[k].size(), CV_8UC1);
+    applyColorMap(in, out, COLORMAP_JET);
     // imshow("Coefficient DCT", norm_0_255(out));
     // waitKey();
 
-    imshow(title, norm_0_255(res));
+    imshow(title, norm_0_255(out));
+    save_img(out, "DCT.jpg");
     waitKey();
   }
 }
@@ -340,6 +354,15 @@ void applyMask(vector<Mat> & imgSrcDCT, int mask = 0)
     std::cout << "X : " << x << " Y : " << y << " Width : " << width << " Height : " << height << std::endl;
     masque = Rect(x, y, width, height);
   }
+  else if(mask == 4){
+    x = 0;
+    y = 0;
+    width = 2;
+    height = 2;
+
+    std::cout << "X : " << x << " Y : " << y << " Width : " << width << " Height : " << height << std::endl;
+    masque = Rect(x, y, width, height);
+  }
 
   for(int k = 0; k < 3; k ++){
     imgSrcDCT[k](masque).setTo(0);
@@ -381,6 +404,10 @@ int main(int argc, char** argv){
 
     // Visualiser l'image
 	imshow("inputImageSrcY", norm_0_255(imgSrc[0]));
+  save_img(inputImageSrc, "imageOriginal.jpg");
+  save_img(norm_0_255(imgSrc[0]), "inputImageSrcY.jpg");
+  save_img(norm_0_255(imgSrc[1]), "inputImageSrcCr.jpg");
+  save_img(norm_0_255(imgSrc[2]), "inputImageSrcCb.jpg");
 	cvWaitKey();
 
   //calcul de la DCT de imgSrc
@@ -389,49 +416,47 @@ int main(int argc, char** argv){
   //Calcul de la DCT inverse de imgSrcDCT
   cout << "----------- COMPUTE inverseDCT --------------" << endl;
   inverseDCT(imgSrcDCT, imgSrcInverseDCT);
-  imshow("Inverse DCT Y", norm_0_255(imgSrcInverseDCT[0]));
-  imshow("Inverse DCT Cr", norm_0_255(imgSrcInverseDCT[1]));
-  imshow("Inverse DCT Cb", norm_0_255(imgSrcInverseDCT[2]));
-  waitKey();
+  // imshow("Inverse DCT Y", norm_0_255(imgSrcInverseDCT[0]));
+  // imshow("Inverse DCT Cr", norm_0_255(imgSrcInverseDCT[1]));
+  // imshow("Inverse DCT Cb", norm_0_255(imgSrcInverseDCT[2]));
+  // waitKey();
 
-	cout << "Calculs between " << argv[1] << "_Y and inverseDCT_Y : "<< "\n";
-	psnr(imgSrc[0], imgSrcInverseDCT[0]);
-	cout << "Calculs between " << argv[1] << "_Cr and inverseDCT_Cr : "<< "\n";
-	psnr(imgSrc[1], imgSrcInverseDCT[1]);
-	cout << "Calculs between " << argv[1] << "_Cb and inverseDCT_Cb : "<< "\n";
-	psnr(imgSrc[2], imgSrcInverseDCT[2]);
+	// cout << "Calculs between " << argv[1] << "_Y and inverseDCT_Y : "<< "\n";
+	// psnr(imgSrc[0], imgSrcInverseDCT[0]);
+	// cout << "Calculs between " << argv[1] << "_Cr and inverseDCT_Cr : "<< "\n";
+	// psnr(imgSrc[1], imgSrcInverseDCT[1]);
+	// cout << "Calculs between " << argv[1] << "_Cb and inverseDCT_Cb : "<< "\n";
+	// psnr(imgSrc[2], imgSrcInverseDCT[2]);
 
 
   //Affichage des coefficients DCT et de l'entropie des coefficients
   //vector<Mat> imgSrcDCTDisplayed = imgSrcDCT;
-  display_DCT(imgSrcDCT);
-  vector<Mat> histosCoef;
-  /*std::cout << "Entropie des coefficients" << std::endl;
-  for(int i = 0; i < 3; i ++){
-    imshow("Coefficient DCT", norm_0_255(imgSrcDCTDisplayed[i]));
-    waitKey();
-    Mat tempHist;
-    computeHistogram(imgSrcDCT[i], tempHist);
-    histosCoef.push_back(displayHistogram(tempHist));
-    entropyCalculus(imgSrcDCT[i], tempHist);
-  }*/
+  // display_DCT(imgSrcDCT);
+  // vector<Mat> histosCoef;
+  // std::cout << "Entropie des coefficients" << std::endl;
+  // for(int i = 0; i < 3; i ++){
+  //   Mat tempHist;
+  //   computeHistogram(imgSrcDCT[i], tempHist);
+  //   histosCoef.push_back(displayHistogram(tempHist));
+  //   entropyCalculus(imgSrcDCT[i], tempHist);
+  // }
 
-  //Calcul entropie image source
-/*  vector<Mat> histosSrc;
-  std::cout << "Entropie de l'image source" << std::endl;
-  for(int i = 0; i < 3; i ++){
-    imshow("Image originale", norm_0_255(imgSrc[i]));
-    waitKey();
-    Mat tempHist;
-    computeHistogram(imgSrc[i], tempHist);
-    histosSrc.push_back(displayHistogram(tempHist));
-    entropyCalculus(imgSrc[i], tempHist);
-  }*/
+ //  //Calcul entropie image source
+ // vector<Mat> histosSrc;
+ //  std::cout << "Entropie de l'image source" << std::endl;
+ //  for(int i = 0; i < 3; i ++){
+ //    imshow("Image originale", norm_0_255(imgSrc[i]));
+ //    waitKey();
+ //    Mat tempHist;
+ //    computeHistogram(imgSrc[i], tempHist);
+ //    histosSrc.push_back(displayHistogram(tempHist));
+ //    entropyCalculus(imgSrc[i], tempHist);
+ //  }
 
   //2.3 - Annulation des coefficients DCT
   std::cout << "Annulation des coefficients" << std::endl;
   //
-  applyMask(imgSrcDCT, 0);
+  applyMask(imgSrcDCT, 4);
   display_DCT(imgSrcDCT);
   inverseDCT(imgSrcDCT, imgSrcInverseDCT);
   std::cout << "PSNR image source et DCT erased" << std::endl;
@@ -443,6 +468,13 @@ int main(int argc, char** argv){
   imshow("Inverse DCT Cb_erased", norm_0_255(imgSrcInverseDCT[2]));
   waitKey();
 
+  //distortionMap
+  Mat distoMap;
+  distortionMap(imgSrc, imgSrcInverseDCT, distoMap);
+  imshow("distortionMap", norm_0_255(distoMap));
+  save_img(norm_0_255(distoMap), "distortionMap_mask.jpg");
+  waitKey();
+
   //Fusions des canaux
   Mat finalImg32F;
   merge(imgSrcInverseDCT, finalImg32F);
@@ -451,13 +483,22 @@ int main(int argc, char** argv){
   finalImg32F.convertTo(finalImg, CV_8UC3);
   //Conversion en BGR
   toBGR(finalImg, finalImg);
-  imshow("Final Image", finalImg);
+  imshow("Final Image", norm_0_255(finalImg));
+  save_img(norm_0_255(finalImg), "imageFinale_mask.jpg");
   waitKey();
 
   //3.7 - DCT Block 8x8
-  blockDCT(imgSrc, imgSrcDCT, false, 2);
+  blockDCT(imgSrc, imgSrcDCT, false, 1);
   display_DCT(imgSrcDCT, "Coefficients DCT block 8x8");
-  inverseblockDCT(imgSrcDCT, imgSrcInverseDCT, 2);
+  vector<Mat> histosCoef;
+  std::cout << "Entropie des coefficients" << std::endl;
+  for(int i = 0; i < 3; i ++){
+    Mat tempHist;
+    computeHistogram(imgSrcDCT[i], tempHist);
+    histosCoef.push_back(displayHistogram(tempHist));
+    entropyCalculus(imgSrcDCT[i], tempHist);
+  }
+  inverseblockDCT(imgSrcDCT, imgSrcInverseDCT, 1);
   std::cout << "PSNR image source et DCT block" << std::endl;
   psnr(imgSrc[0], imgSrcInverseDCT[0]);
   imshow("Inverse DCT Y block", norm_0_255(imgSrcInverseDCT[0]));
@@ -465,6 +506,10 @@ int main(int argc, char** argv){
   imshow("Inverse DCT Cr block", norm_0_255(imgSrcInverseDCT[1]));
   waitKey();
   imshow("Inverse DCT Cb block", norm_0_255(imgSrcInverseDCT[2]));
+  waitKey();
+  distortionMap(imgSrc, imgSrcInverseDCT, distoMap);
+  imshow("distortionMap", norm_0_255(distoMap));
+  save_img(norm_0_255(distoMap), "distortionMap_block_mask.jpg");
   waitKey();
 
   //Fusions des canaux
@@ -476,6 +521,7 @@ int main(int argc, char** argv){
   //Conversion en BGR
   toBGR(finalImg, finalImg);
   imshow("Final Image Block", finalImg);
+  save_img(norm_0_255(finalImg), "imageFinale_block_mask.jpg");
   waitKey();
 
   return 0;
